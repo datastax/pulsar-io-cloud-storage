@@ -43,23 +43,23 @@
 
     <!-- connector dependencies -->
     <jackson.version>2.13.2</jackson.version>
-    <jackson-databind.version>2.13.2.1</jackson-databind.version>
+    <jackson-databind.version>2.13.4.1</jackson-databind.version>
     <lombok.version>1.18.32</lombok.version>
     <pulsar.groupId>com.datastax.oss</pulsar.groupId>
     <pulsar.version>2.10.4.0</pulsar.version>
     <parquet.version>1.12.2</parquet.version>
-    <awsjavasdk.version>1.12.148</awsjavasdk.version>
+    <awsjavasdk.version>1.12.638</awsjavasdk.version>
     <aws.java.sdk2.version>2.16.1</aws.java.sdk2.version>
     <jaxb-api>2.3.1</jaxb-api>
     <gson.version>2.8.9</gson.version>
     <commons-compress.version>1.21</commons-compress.version>
     <log4j.version>2.17.1</log4j.version>
-    <json-smart.version>2.4.7</json-smart.version>
+    <json-smart.version>2.4.9</json-smart.version>
     <protobuf3.version>3.19.6</protobuf3.version>
     <protoc3.version>${protobuf3.version}</protoc3.version>
     <grpc.version>1.42.1</grpc.version>
     <protoc-gen-grpc-java.version>${grpc.version}</protoc-gen-grpc-java.version>
-    <azure-sdk-bom.version>1.2.6</azure-sdk-bom.version>
+    <azure-sdk-bom.version>1.2.19</azure-sdk-bom.version>
 
     <!-- test dependencies -->
     <junit.version>4.13.1</junit.version>
@@ -78,7 +78,7 @@
     <spotbugs-maven-plugin.version>3.1.8</spotbugs-maven-plugin.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
     <os-maven-plugin.version>1.4.1.Final</os-maven-plugin.version>
-    <snakeyaml.version>1.33</snakeyaml.version>
+    <snakeyaml.version>2.0</snakeyaml.version>
     <reload4j.version>1.2.24</reload4j.version>
     <woodstox-core.version>5.4.0</woodstox-core.version>
     <netty.version>4.1.86.Final</netty.version>
@@ -372,6 +372,7 @@
     <dependency>
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java-util</artifactId>
+      <version>3.23.3</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -390,7 +391,7 @@
     <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
-      <version>1.10.2</version>
+      <version>1.11.3</version>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -422,7 +423,7 @@
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
-      <version>3.3.3</version>
+      <version>3.4.0</version>
       <exclusions>
         <exclusion>
           <groupId>org.apache.hadoop</groupId>
