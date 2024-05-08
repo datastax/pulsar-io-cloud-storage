@@ -28,9 +28,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.apache.commons.compress.utils.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.parquet.avro.AvroParquetWriter;
@@ -40,8 +42,11 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.pulsar.client.api.SchemaSerializationException;
+import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
+import org.apache.pulsar.client.api.schema.KeyValueSchema;
 import org.apache.pulsar.common.protocol.schema.ProtobufNativeSchemaData;
+import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.io.jcloud.BlobStoreAbstractConfig;
@@ -263,8 +268,26 @@ public class ParquetFormat implements Format<GenericRecord>, InitConfiguration<B
                         parquetWriter.write(protoRecord);
                     }
                 } else {
-                    org.apache.avro.generic.GenericRecord writeRecord = AvroRecordUtil
-                            .convertGenericRecord(genericRecord, rootAvroSchema);
+                    org.apache.avro.generic.GenericRecord writeRecord;
+                    if (rootAvroSchema != null && genericRecord.getSchemaType() == SchemaType.KEY_VALUE) {
+                        KeyValue<GenericRecord, GenericRecord> keyValue =
+                                (KeyValue<GenericRecord, GenericRecord>) genericRecord.getNativeObject();
+                        writeRecord = new GenericData.Record(rootAvroSchema);
+                        GenericRecord keyObject = keyValue.getKey();
+                        if (keyObject != null) {
+                            Schema keySchema = rootAvroSchema.getField("key").schema();
+                            writeRecord.put("key", AvroRecordUtil.convertGenericRecord(keyObject, keySchema));
+                        }
+                        GenericRecord valueObject = keyValue.getValue();
+                        if (valueObject != null) {
+                            Schema valueSchema = rootAvroSchema.getField("value").schema();
+                            writeRecord.put("value", AvroRecordUtil.convertGenericRecord(valueObject, valueSchema));
+                        }
+
+                    } else {
+                        writeRecord = AvroRecordUtil
+                                .convertGenericRecord(genericRecord, rootAvroSchema);
+                    }
                     if (useMetadata) {
                         org.apache.avro.generic.GenericRecord metadataRecord =
                                 MetadataUtil.extractedMetadataRecord(next,
