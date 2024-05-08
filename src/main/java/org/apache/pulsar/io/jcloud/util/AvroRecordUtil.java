@@ -196,7 +196,6 @@ public class AvroRecordUtil {
         final Schema.Parser parser = new Schema.Parser();
         parser.setValidateDefaults(false);
         Schema schema = parser.parse(jsonSchema);
-        // intentionally remove the namespace
         List<Schema.Field> fields = schema.getFields()
                 .stream()
                 .map(f -> new Schema.Field(f, f.schema()))
