@@ -229,6 +229,24 @@ public class AvroRecordUtil {
 
     public static org.apache.avro.generic.GenericRecord convertGenericRecord(GenericRecord recordValue,
                                                                              Schema rootAvroSchema) {
+        if (recordValue.getSchemaType() == SchemaType.KEY_VALUE) {
+            KeyValue<GenericRecord, GenericRecord> keyValue =
+                    (KeyValue<GenericRecord, GenericRecord>) recordValue.getNativeObject();
+            org.apache.avro.generic.GenericRecord recordHolder = new GenericData.Record(rootAvroSchema);
+            GenericRecord keyObject = keyValue.getKey();
+            if (keyObject != null) {
+                Schema keySchema = rootAvroSchema.getField("key").schema();
+                recordHolder.put("key", convertGenericRecord(keyObject, keySchema));
+            }
+            GenericRecord valueObject = keyValue.getValue();
+            if (valueObject != null) {
+                Schema valueSchema = rootAvroSchema.getField("value").schema();
+                recordHolder.put("value", convertGenericRecord(valueObject, valueSchema));
+            }
+            return recordHolder;
+        }
+
+        // handle nullable fields that are union[null,record]
         if (rootAvroSchema.isUnion()) {
             rootAvroSchema = rootAvroSchema.getTypes().stream()
                     .filter(schema -> schema.getType().equals(Schema.Type.RECORD))

@@ -268,26 +268,8 @@ public class ParquetFormat implements Format<GenericRecord>, InitConfiguration<B
                         parquetWriter.write(protoRecord);
                     }
                 } else {
-                    org.apache.avro.generic.GenericRecord writeRecord;
-                    if (rootAvroSchema != null && genericRecord.getSchemaType() == SchemaType.KEY_VALUE) {
-                        KeyValue<GenericRecord, GenericRecord> keyValue =
-                                (KeyValue<GenericRecord, GenericRecord>) genericRecord.getNativeObject();
-                        writeRecord = new GenericData.Record(rootAvroSchema);
-                        GenericRecord keyObject = keyValue.getKey();
-                        if (keyObject != null) {
-                            Schema keySchema = rootAvroSchema.getField("key").schema();
-                            writeRecord.put("key", AvroRecordUtil.convertGenericRecord(keyObject, keySchema));
-                        }
-                        GenericRecord valueObject = keyValue.getValue();
-                        if (valueObject != null) {
-                            Schema valueSchema = rootAvroSchema.getField("value").schema();
-                            writeRecord.put("value", AvroRecordUtil.convertGenericRecord(valueObject, valueSchema));
-                        }
-
-                    } else {
-                        writeRecord = AvroRecordUtil
-                                .convertGenericRecord(genericRecord, rootAvroSchema);
-                    }
+                    org.apache.avro.generic.GenericRecord writeRecord = AvroRecordUtil
+                            .convertGenericRecord(genericRecord, rootAvroSchema);
                     if (useMetadata) {
                         org.apache.avro.generic.GenericRecord metadataRecord =
                                 MetadataUtil.extractedMetadataRecord(next,
