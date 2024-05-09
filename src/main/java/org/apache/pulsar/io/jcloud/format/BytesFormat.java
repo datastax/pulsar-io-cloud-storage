@@ -36,7 +36,7 @@ import org.apache.pulsar.jcloud.shade.com.google.common.io.ByteStreams;
  */
 public class BytesFormat implements Format<GenericRecord>, InitConfiguration<BlobStoreAbstractConfig> {
 
-    public static final byte[] NULL_BYTES = "<null>".getBytes(StandardCharsets.UTF_8);
+    public static final byte[] NULL_BYTES = "".getBytes(StandardCharsets.UTF_8);
     private byte[] lineSeparatorBytes;
 
     @Override
