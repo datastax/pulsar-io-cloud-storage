@@ -52,6 +52,7 @@ public class ConnectorConfigTest {
         config.put("timePartitionDuration", "2d");
         config.put("batchSize", 10);
         config.put("partitioner", "topic");
+        config.put("topicsToPathMapping", "my-tenant/my-ns/topic1=path-mytopic1,my-tenant/my-ns/topic2=path-mytopic2");
         CloudStorageSinkConfig cloudStorageSinkConfig = CloudStorageSinkConfig.load(config);
         cloudStorageSinkConfig.validate();
 
@@ -69,6 +70,7 @@ public class ConnectorConfigTest {
                 cloudStorageSinkConfig.getPartitioner().toString().toLowerCase());
         Assert.assertEquals((int) config.get("batchSize"), cloudStorageSinkConfig.getPendingQueueSize());
         Assert.assertEquals(10000000L, cloudStorageSinkConfig.getMaxBatchBytes());
+        Assert.assertEquals(config.get("topicsToPathMapping"), cloudStorageSinkConfig.getTopicsToPathMapping());
     }
 
     @Test
@@ -125,6 +127,77 @@ public class ConnectorConfigTest {
 
         try {
             config.put("timePartitionDuration", "1000y");
+            CloudStorageSinkConfig.load(config).validate();
+            Assert.fail();
+        } catch (Exception e) {
+        }
+    }
+
+    @Test
+    public void topicsToPathMappingTest() throws IOException {
+        Map<String, Object> config = new HashMap<>();
+        config.put("provider", PROVIDER_AWSS3);
+        config.put("accessKeyId", "aws-s3");
+        config.put("secretAccessKey", "aws-s3");
+        config.put("bucket", "testbucket");
+        config.put("region", "localhost");
+        config.put("endpoint", "https://us-standard");
+        config.put("formatType", "avro");
+        config.put("partitionerType", "default");
+        config.put("timePartitionPattern", "yyyy-MM-dd");
+        config.put("timePartitionDuration", "2d");
+        config.put("batchSize", 10);
+        try {
+            config.put("topicsToPathMapping", "my-tenant/my-ns/topic1=path-mytopic1,my-tenant/my-ns/topic2=path-mytopic2");
+            CloudStorageSinkConfig.load(config).validate();
+        } catch (Exception e) {
+            Assert.fail();
+        }
+
+        try {
+            config.put("topicsToPathMapping", "topic1=path-mytopic1");
+            CloudStorageSinkConfig.load(config).validate();
+            Assert.fail();
+        } catch (Exception e) {
+        }
+
+        try {
+            config.put("topicsToPathMapping", "tenant1/=path-mytopic1");
+            CloudStorageSinkConfig.load(config).validate();
+            Assert.fail();
+        } catch (Exception e) {
+        }
+
+        try {
+            config.put("topicsToPathMapping", "tenant1/ns1=path-mytopic1");
+            CloudStorageSinkConfig.load(config).validate();
+            Assert.fail();
+        } catch (Exception e) {
+        }
+
+        try {
+            config.put("topicsToPathMapping", "tenant1/ns1/topic1=path-mytopic1,tenant1/ns1/topic2=");
+            CloudStorageSinkConfig.load(config).validate();
+            Assert.fail();
+        } catch (Exception e) {
+        }
+
+        try {
+            config.put("topicsToPathMapping", "tenant1/ns1/topic1=path-mytopic1,=path-mytopic2");
+            CloudStorageSinkConfig.load(config).validate();
+            Assert.fail();
+        } catch (Exception e) {
+        }
+
+        try {
+            config.put("topicsToPathMapping", "tenant1/ns1/topic1=/path-mytopic1");
+            CloudStorageSinkConfig.load(config).validate();
+            Assert.fail();
+        } catch (Exception e) {
+        }
+
+        try {
+            config.put("topicsToPathMapping", "tenant1/ns1/topic1=path-mytopic1/");
             CloudStorageSinkConfig.load(config).validate();
             Assert.fail();
         } catch (Exception e) {

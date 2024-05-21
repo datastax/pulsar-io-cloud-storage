@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
@@ -35,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.api.Message;
@@ -81,6 +83,8 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
 
     private String pathPrefix;
 
+    private Map<String, String> topicsToPathMapping;
+
     private long maxBatchSize;
     private long maxBatchBytes;
     final AtomicLong currentBatchSize = new AtomicLong(0L);
@@ -111,6 +115,7 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
         if (partitioner instanceof LegacyPartitioner) {
             legacyPartitioner = buildLegacyPartitioner(sinkConfig);
         }
+        topicsToPathMapping = parseTopicsToPathMappingString(sinkConfig.getTopicsToPathMapping());
         pathPrefix = StringUtils.trimToEmpty(sinkConfig.getPathPrefix());
         long batchTimeMs = sinkConfig.getBatchTimeMs();
         maxBatchSize = sinkConfig.getBatchSize();
@@ -119,6 +124,21 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
         isRunning = true;
         this.sinkContext = sinkContext;
         this.blobWriter = initBlobWriter(sinkConfig);
+    }
+
+    private Map<String, String> parseTopicsToPathMappingString(String topicsToPathMappingString) {
+        Map<String, String> topicsToPathMapping = new HashMap<>();
+        if (StringUtils.isNotEmpty(topicsToPathMappingString)) {
+            for (String topicPathPair : topicsToPathMappingString.split(",")) {
+                String[] topicToPathMapping = topicPathPair.split("=");
+                if (topicToPathMapping.length == 2) {
+                    topicsToPathMapping.put(topicToPathMapping[0], topicToPathMapping[1]);
+                } else {
+                    log.warn("The topic to path mapping is not in correct format {}.", topicPathPair);
+                }
+            }
+        }
+        return topicsToPathMapping;
     }
 
     private boolean isCurrentBatchThresholdReached() {
@@ -302,6 +322,9 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
                     final long timeStampForPartitioning = System.currentTimeMillis();
                     filepath = ((LegacyPartitioner) partitioner).buildPartitionPath(firstRecord, pathPrefix,
                             legacyPartitioner, format, timeStampForPartitioning);
+                } else if (isTopicToPathMappingExists(entry.getKey())) {
+                    String topicPath = topicsToPathMapping.get(entry.getKey());
+                    filepath = pathPrefix + topicPath + format.getExtension();
                 } else {
                     filepath = pathPrefix + entry.getKey() + format.getExtension();
                 }
@@ -348,6 +371,21 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
                 bulkHandleFailedRecords(singleTopicRecordsToInsert);
             }
         }
+    }
+
+    private boolean isTopicToPathMappingExists(String topic) {
+        return MapUtils.isNotEmpty(topicsToPathMapping)
+                && topicsToPathMapping.containsKey(trimTopicName(topic));
+    }
+
+    private String trimTopicName(String fullyQualifiedTopicName) {
+        int startIndex = fullyQualifiedTopicName.indexOf("://") + 3; // start after ://
+        int endIndex = fullyQualifiedTopicName.length();
+        // If the topic is partitioned topic & ends with -partition-<some-int>
+        if (fullyQualifiedTopicName.matches(".*-partition-\\d+$")) {
+            endIndex = fullyQualifiedTopicName.lastIndexOf("-partition");
+        }
+        return fullyQualifiedTopicName.substring(startIndex, endIndex);
     }
 
     private void bulkHandleFailedRecords(List<Record<GenericRecord>> failedRecords) {
