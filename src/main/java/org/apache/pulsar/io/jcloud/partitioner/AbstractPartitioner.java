@@ -18,13 +18,11 @@
  */
 package org.apache.pulsar.io.jcloud.partitioner;
 
-import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.common.naming.TopicName;
@@ -48,7 +46,6 @@ public abstract class AbstractPartitioner<T> implements Partitioner<T> {
 
     private Map<String, String> topicsToPathMapping;
     private Map<String, String> computedTopicsToPathMapping;
-
 
     @Override
     public void configure(BlobStoreAbstractConfig config) {
@@ -77,9 +74,8 @@ public abstract class AbstractPartitioner<T> implements Partitioner<T> {
 
     @Override
     public String generatePartitionedPath(String topic, String encodedPartition) {
-        if (MapUtils.isNotEmpty(computedTopicsToPathMapping) && computedTopicsToPathMapping.containsKey(topic)) {
-            return StringUtils.join(Arrays.asList(computedTopicsToPathMapping.get(topic), encodedPartition),
-                    PATH_SEPARATOR);
+        if (computedTopicsToPathMapping.containsKey(topic)) {
+            return String.format("%s%s%s", computedTopicsToPathMapping.get(topic), PATH_SEPARATOR, encodedPartition);
         } else {
             List<String> joinList = new ArrayList<>();
             TopicName topicName = TopicName.get(topic);
@@ -99,7 +95,7 @@ public abstract class AbstractPartitioner<T> implements Partitioner<T> {
                 joinList.add(newTopicName.getLocalName());
             }
             String generatedTopicPath = StringUtils.join(joinList, PATH_SEPARATOR);
-            if (MapUtils.isNotEmpty(topicsToPathMapping) && topicsToPathMapping.containsKey(generatedTopicPath)) {
+            if (topicsToPathMapping.containsKey(generatedTopicPath)) {
                 joinList.clear();
                 joinList.add(topicsToPathMapping.get(generatedTopicPath));
             }
