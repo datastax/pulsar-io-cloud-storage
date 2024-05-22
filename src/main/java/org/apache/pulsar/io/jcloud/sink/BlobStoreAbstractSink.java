@@ -19,14 +19,11 @@
 package org.apache.pulsar.io.jcloud.sink;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static org.apache.pulsar.io.jcloud.partitioner.Partitioner.PATH_SEPARATOR;
 import static org.apache.pulsar.io.jcloud.util.AvroRecordUtil.getPulsarSchema;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +36,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.api.Message;
@@ -82,8 +78,6 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
 
     private String pathPrefix;
 
-    private Map<String, String> topicsToPathMapping;
-
     private long maxBatchSize;
     private long maxBatchBytes;
     private final AtomicLong currentBatchSize = new AtomicLong(0L);
@@ -111,7 +105,6 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
             formatConfigInitializer.configure(sinkConfig);
         }
         partitioner = buildPartitioner(sinkConfig);
-        topicsToPathMapping = parseTopicsToPathMappingString(sinkConfig.getTopicsToPathMapping());
         pathPrefix = StringUtils.trimToEmpty(sinkConfig.getPathPrefix());
         long batchTimeMs = sinkConfig.getBatchTimeMs();
         maxBatchSize = sinkConfig.getBatchSize();
@@ -120,21 +113,6 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
         isRunning = true;
         this.sinkContext = sinkContext;
         this.blobWriter = initBlobWriter(sinkConfig);
-    }
-
-    private Map<String, String> parseTopicsToPathMappingString(String topicsToPathMappingString) {
-        Map<String, String> topicsToPathMapping = new HashMap<>();
-        if (StringUtils.isNotEmpty(topicsToPathMappingString)) {
-            for (String topicPathPair : topicsToPathMappingString.split(",")) {
-                String[] topicToPathMapping = topicPathPair.split("=");
-                if (topicToPathMapping.length == 2) {
-                    topicsToPathMapping.put(topicToPathMapping[0], topicToPathMapping[1]);
-                } else {
-                    log.warn("The topic to path mapping is not in correct format {}.", topicPathPair);
-                }
-            }
-        }
-        return topicsToPathMapping;
     }
 
     private void flushIfNeeded(boolean force) {
@@ -353,19 +331,9 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
 
         String encodePartition = partitioner.encodePartition(message, partitioningTimestamp);
         String partitionedPath = partitioner.generatePartitionedPath(message.getTopicName().get(), encodePartition);
-        String trimmedTopicPath = partitionedPath.replace(PATH_SEPARATOR + encodePartition, StringUtils.EMPTY);
-        if (isTopicToPathMappingExists(trimmedTopicPath)) {
-            String topicMappedPath = topicsToPathMapping.get(trimmedTopicPath);
-            partitionedPath = StringUtils.join(Arrays.asList(topicMappedPath, encodePartition), PATH_SEPARATOR);
-        }
         String path = pathPrefix + partitionedPath + format.getExtension();
         log.info("generate message[recordSequence={}] savePath: {}", message.getRecordSequence().get(), path);
         return path;
-    }
-
-    private boolean isTopicToPathMappingExists(String topic) {
-        return MapUtils.isNotEmpty(topicsToPathMapping)
-                && topicsToPathMapping.containsKey(topic);
     }
 
     private long getBytesSum(List<Record<GenericRecord>> records) {
