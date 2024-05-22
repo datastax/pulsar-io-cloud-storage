@@ -25,7 +25,7 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -45,7 +45,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericRecord;
-import org.apache.pulsar.common.naming.TopicName;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.io.core.Sink;
 import org.apache.pulsar.io.core.SinkContext;
@@ -353,46 +352,20 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
                                      long partitioningTimestamp) {
 
         String encodePartition = partitioner.encodePartition(message, partitioningTimestamp);
-        String partitionedPath;
-        if (isTopicToPathMappingExists(message.getTopicName().get())) {
-            partitionedPath = generatePartitionedPathForMappedTopic(message.getTopicName().get(), encodePartition);
-        } else {
-            partitionedPath = partitioner.generatePartitionedPath(message.getTopicName().get(), encodePartition);
+        String partitionedPath = partitioner.generatePartitionedPath(message.getTopicName().get(), encodePartition);
+        String generatedTopicPath = partitionedPath.replace(PATH_SEPARATOR + encodePartition, StringUtils.EMPTY);
+        if (isTopicToPathMappingExists(generatedTopicPath)) {
+            String mappedPath = topicsToPathMapping.get(generatedTopicPath);
+            partitionedPath = StringUtils.join(Arrays.asList(mappedPath, encodePartition), PATH_SEPARATOR);
         }
         String path = pathPrefix + partitionedPath + format.getExtension();
         log.info("generate message[recordSequence={}] savePath: {}", message.getRecordSequence().get(), path);
         return path;
     }
 
-    public String generatePartitionedPathForMappedTopic(String topic, String encodedPartition) {
-        List<String> joinList = new ArrayList<>();
-        TopicName topicName = TopicName.get(topic);
-        joinList.add(topicsToPathMapping.get(trimTopicName(topic)));
-
-        if (topicName.isPartitioned() && sinkConfig.isWithTopicPartitionNumber()) {
-            if (sinkConfig.isSliceTopicPartitionPath()) {
-                joinList.add(Integer.toString(topicName.getPartitionIndex()));
-            } else {
-                joinList.add("partition-" + topicName.getPartitionIndex());
-            }
-        }
-        joinList.add(encodedPartition);
-        return StringUtils.join(joinList, PATH_SEPARATOR);
-    }
-
     private boolean isTopicToPathMappingExists(String topic) {
         return MapUtils.isNotEmpty(topicsToPathMapping)
-                && topicsToPathMapping.containsKey(trimTopicName(topic));
-    }
-
-    private String trimTopicName(String fullyQualifiedTopicName) {
-        int startIndex = fullyQualifiedTopicName.indexOf("://") + 3; // start after ://
-        int endIndex = fullyQualifiedTopicName.length();
-        // If the topic is partitioned topic & ends with -partition-<some-int>
-        if (fullyQualifiedTopicName.matches(".*-partition-\\d+$")) {
-            endIndex = fullyQualifiedTopicName.lastIndexOf("-partition");
-        }
-        return fullyQualifiedTopicName.substring(startIndex, endIndex);
+                && topicsToPathMapping.containsKey(topic);
     }
 
     private long getBytesSum(List<Record<GenericRecord>> records) {
