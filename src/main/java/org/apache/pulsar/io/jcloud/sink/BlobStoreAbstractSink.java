@@ -19,11 +19,14 @@
 package org.apache.pulsar.io.jcloud.sink;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static org.apache.pulsar.io.jcloud.partitioner.Partitioner.PATH_SEPARATOR;
 import static org.apache.pulsar.io.jcloud.util.AvroRecordUtil.getPulsarSchema;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -36,11 +39,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.EnumUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.GenericRecord;
+import org.apache.pulsar.common.naming.TopicName;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.io.core.Sink;
 import org.apache.pulsar.io.core.SinkContext;
@@ -78,6 +83,8 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
 
     private String pathPrefix;
 
+    private Map<String, String> topicsToPathMapping;
+
     private long maxBatchSize;
     private long maxBatchBytes;
     private final AtomicLong currentBatchSize = new AtomicLong(0L);
@@ -105,6 +112,7 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
             formatConfigInitializer.configure(sinkConfig);
         }
         partitioner = buildPartitioner(sinkConfig);
+        topicsToPathMapping = parseTopicsToPathMappingString(sinkConfig.getTopicsToPathMapping());
         pathPrefix = StringUtils.trimToEmpty(sinkConfig.getPathPrefix());
         long batchTimeMs = sinkConfig.getBatchTimeMs();
         maxBatchSize = sinkConfig.getBatchSize();
@@ -113,6 +121,21 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
         isRunning = true;
         this.sinkContext = sinkContext;
         this.blobWriter = initBlobWriter(sinkConfig);
+    }
+
+    private Map<String, String> parseTopicsToPathMappingString(String topicsToPathMappingString) {
+        Map<String, String> topicsToPathMapping = new HashMap<>();
+        if (StringUtils.isNotEmpty(topicsToPathMappingString)) {
+            for (String topicPathPair : topicsToPathMappingString.split(",")) {
+                String[] topicToPathMapping = topicPathPair.split("=");
+                if (topicToPathMapping.length == 2) {
+                    topicsToPathMapping.put(topicToPathMapping[0], topicToPathMapping[1]);
+                } else {
+                    log.warn("The topic to path mapping is not in correct format {}.", topicPathPair);
+                }
+            }
+        }
+        return topicsToPathMapping;
     }
 
     private void flushIfNeeded(boolean force) {
@@ -330,10 +353,46 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
                                      long partitioningTimestamp) {
 
         String encodePartition = partitioner.encodePartition(message, partitioningTimestamp);
-        String partitionedPath = partitioner.generatePartitionedPath(message.getTopicName().get(), encodePartition);
+        String partitionedPath;
+        if (isTopicToPathMappingExists(message.getTopicName().get())) {
+            partitionedPath = generatePartitionedPathForMappedTopic(message.getTopicName().get(), encodePartition);
+        } else {
+            partitionedPath = partitioner.generatePartitionedPath(message.getTopicName().get(), encodePartition);
+        }
         String path = pathPrefix + partitionedPath + format.getExtension();
         log.info("generate message[recordSequence={}] savePath: {}", message.getRecordSequence().get(), path);
         return path;
+    }
+
+    public String generatePartitionedPathForMappedTopic(String topic, String encodedPartition) {
+        List<String> joinList = new ArrayList<>();
+        TopicName topicName = TopicName.get(topic);
+        joinList.add(topicsToPathMapping.get(trimTopicName(topic)));
+
+        if (topicName.isPartitioned() && sinkConfig.isWithTopicPartitionNumber()) {
+            if (sinkConfig.isSliceTopicPartitionPath()) {
+                joinList.add(Integer.toString(topicName.getPartitionIndex()));
+            } else {
+                joinList.add("partition-" + topicName.getPartitionIndex());
+            }
+        }
+        joinList.add(encodedPartition);
+        return StringUtils.join(joinList, PATH_SEPARATOR);
+    }
+
+    private boolean isTopicToPathMappingExists(String topic) {
+        return MapUtils.isNotEmpty(topicsToPathMapping)
+                && topicsToPathMapping.containsKey(trimTopicName(topic));
+    }
+
+    private String trimTopicName(String fullyQualifiedTopicName) {
+        int startIndex = fullyQualifiedTopicName.indexOf("://") + 3; // start after ://
+        int endIndex = fullyQualifiedTopicName.length();
+        // If the topic is partitioned topic & ends with -partition-<some-int>
+        if (fullyQualifiedTopicName.matches(".*-partition-\\d+$")) {
+            endIndex = fullyQualifiedTopicName.lastIndexOf("-partition");
+        }
+        return fullyQualifiedTopicName.substring(startIndex, endIndex);
     }
 
     private long getBytesSum(List<Record<GenericRecord>> records) {
