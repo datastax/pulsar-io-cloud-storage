@@ -353,10 +353,10 @@ public abstract class BlobStoreAbstractSink<V extends BlobStoreAbstractConfig> i
 
         String encodePartition = partitioner.encodePartition(message, partitioningTimestamp);
         String partitionedPath = partitioner.generatePartitionedPath(message.getTopicName().get(), encodePartition);
-        String generatedTopicPath = partitionedPath.replace(PATH_SEPARATOR + encodePartition, StringUtils.EMPTY);
-        if (isTopicToPathMappingExists(generatedTopicPath)) {
-            String mappedPath = topicsToPathMapping.get(generatedTopicPath);
-            partitionedPath = StringUtils.join(Arrays.asList(mappedPath, encodePartition), PATH_SEPARATOR);
+        String trimmedTopicPath = partitionedPath.replace(PATH_SEPARATOR + encodePartition, StringUtils.EMPTY);
+        if (isTopicToPathMappingExists(trimmedTopicPath)) {
+            String topicMappedPath = topicsToPathMapping.get(trimmedTopicPath);
+            partitionedPath = StringUtils.join(Arrays.asList(topicMappedPath, encodePartition), PATH_SEPARATOR);
         }
         String path = pathPrefix + partitionedPath + format.getExtension();
         log.info("generate message[recordSequence={}] savePath: {}", message.getRecordSequence().get(), path);
