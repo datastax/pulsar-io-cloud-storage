@@ -18,29 +18,34 @@
  */
 package org.apache.pulsar.io.jcloud.partitioner;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import com.google.common.base.Supplier;
+import java.io.File;
+import java.text.MessageFormat;
+import java.util.Optional;
 import junit.framework.TestCase;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.impl.MessageIdImpl;
 import org.apache.pulsar.common.naming.TopicName;
 import org.apache.pulsar.functions.api.Record;
 import org.apache.pulsar.io.jcloud.BlobStoreAbstractConfig;
+import org.apache.pulsar.io.jcloud.partitioner.legacy.Partitioner;
+import org.apache.pulsar.io.jcloud.partitioner.legacy.SimplePartitioner;
+import org.apache.pulsar.io.jcloud.partitioner.legacy.TimePartitioner;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.text.MessageFormat;
-import java.util.Optional;
-
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 /**
  * partitioner unit test.
  */
 @RunWith(Parameterized.class)
 public class TopicsToPathMappingPartitionerTest extends TestCase {
+
+    private static final String pathSeparator = File.separator;
 
     @Parameterized.Parameter(0)
     public Partitioner<Object> partitioner;
@@ -61,8 +66,8 @@ public class TopicsToPathMappingPartitionerTest extends TestCase {
         blobStoreAbstractConfig1.setTimePartitionPattern("yyyy-MM-dd");
         blobStoreAbstractConfig1.setSliceTopicPartitionPath(false);
         blobStoreAbstractConfig1.setWithTopicPartitionNumber(false);
-        blobStoreAbstractConfig1.setTopicsToPathMapping("public/default/test=path1," +
-                "public/default/test-partition-1=path2,public/default/test/1=path3");
+        blobStoreAbstractConfig1.setTopicsToPathMapping("public/default/test=path1,"
+                + "public/default/test-partition-1=path2,public/default/test/1=path3");
         SimplePartitioner<Object> simplePartitioner1 = new SimplePartitioner<>();
         simplePartitioner1.configure(blobStoreAbstractConfig1);
         TimePartitioner<Object> dayPartitioner1 = new TimePartitioner<>();
@@ -73,8 +78,8 @@ public class TopicsToPathMappingPartitionerTest extends TestCase {
         blobStoreAbstractConfig2.setTimePartitionPattern("yyyy-MM-dd");
         blobStoreAbstractConfig2.setSliceTopicPartitionPath(false);
         blobStoreAbstractConfig2.setWithTopicPartitionNumber(true);
-        blobStoreAbstractConfig2.setTopicsToPathMapping("public/default/test=path1," +
-                "public/default/test-partition-1=path2,public/default/test/1=path3");
+        blobStoreAbstractConfig2.setTopicsToPathMapping("public/default/test=path1,"
+                + "public/default/test-partition-1=path2,public/default/test/1=path3");
         SimplePartitioner<Object> simplePartitioner2 = new SimplePartitioner<>();
         simplePartitioner2.configure(blobStoreAbstractConfig2);
         TimePartitioner<Object> dayPartitioner2 = new TimePartitioner<>();
@@ -85,8 +90,8 @@ public class TopicsToPathMappingPartitionerTest extends TestCase {
         blobStoreAbstractConfig3.setTimePartitionPattern("yyyy-MM-dd");
         blobStoreAbstractConfig3.setSliceTopicPartitionPath(true);
         blobStoreAbstractConfig3.setWithTopicPartitionNumber(false);
-        blobStoreAbstractConfig3.setTopicsToPathMapping("public/default/test=path1," +
-                "public/default/test-partition-1=path2,public/default/test/1=path3");
+        blobStoreAbstractConfig3.setTopicsToPathMapping("public/default/test=path1,"
+                + "public/default/test-partition-1=path2,public/default/test/1=path3");
         SimplePartitioner<Object> simplePartitioner3 = new SimplePartitioner<>();
         simplePartitioner3.configure(blobStoreAbstractConfig3);
         TimePartitioner<Object> dayPartitioner3 = new TimePartitioner<>();
@@ -97,8 +102,8 @@ public class TopicsToPathMappingPartitionerTest extends TestCase {
         blobStoreAbstractConfig4.setTimePartitionPattern("yyyy-MM-dd");
         blobStoreAbstractConfig4.setSliceTopicPartitionPath(true);
         blobStoreAbstractConfig4.setWithTopicPartitionNumber(true);
-        blobStoreAbstractConfig4.setTopicsToPathMapping("public/default/test=path1," +
-                "public/default/test-partition-1=path2,public/default/test/1=path3");
+        blobStoreAbstractConfig4.setTopicsToPathMapping("public/default/test=path1,"
+                + "public/default/test-partition-1=path2,public/default/test/1=path3");
         SimplePartitioner<Object> simplePartitioner4 = new SimplePartitioner<>();
         simplePartitioner4.configure(blobStoreAbstractConfig4);
         TimePartitioner<Object> dayPartitioner4 = new TimePartitioner<>();
@@ -108,97 +113,97 @@ public class TopicsToPathMappingPartitionerTest extends TestCase {
                 new Object[]{
                         simplePartitioner1,
                         "3221225506",
-                        "path1" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "path1" + pathSeparator + "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         dayPartitioner1,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "path1/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08" + pathSeparator + "3221225506",
+                        "path1/2020-09-08" + pathSeparator + "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         simplePartitioner1,
                         "3221225506",
-                        "path1" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "path1" + pathSeparator + "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         dayPartitioner1,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "path1/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08" + pathSeparator + "3221225506",
+                        "path1/2020-09-08" + pathSeparator + "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         simplePartitioner2,
                         "3221225506",
-                        "path1" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "path1" + pathSeparator + "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         dayPartitioner2,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "path1/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08" + pathSeparator + "3221225506",
+                        "path1/2020-09-08" + pathSeparator + "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         simplePartitioner2,
                         "3221225506",
-                        "path2" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "path2" + pathSeparator + "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         dayPartitioner2,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "path2/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08" + pathSeparator + "3221225506",
+                        "path2/2020-09-08" + pathSeparator + "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         simplePartitioner3,
                         "3221225506",
-                        "path1" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "path1" + pathSeparator + "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         dayPartitioner3,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "path1/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08" + pathSeparator + "3221225506",
+                        "path1/2020-09-08" + pathSeparator + "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         simplePartitioner3,
                         "3221225506",
-                        "path1" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "path1" + pathSeparator + "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         dayPartitioner3,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "path1/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08" + pathSeparator + "3221225506",
+                        "path1/2020-09-08" + pathSeparator + "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         simplePartitioner4,
                         "3221225506",
-                        "path1" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "path1" + pathSeparator + "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         dayPartitioner4,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "path1/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08" + pathSeparator + "3221225506",
+                        "path1/2020-09-08" + pathSeparator + "3221225506",
                         getTopic()
                 },
                 new Object[]{
                         simplePartitioner4,
                         "3221225506",
-                        "path3" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "path3" + pathSeparator + "3221225506",
                         getPartitionedTopic()
                 },
                 new Object[]{
                         dayPartitioner4,
-                        "2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
-                        "path3/2020-09-08" + Partitioner.PATH_SEPARATOR + "3221225506",
+                        "2020-09-08" + pathSeparator + "3221225506",
+                        "path3/2020-09-08" + pathSeparator + "3221225506",
                         getPartitionedTopic()
                 },
         };
