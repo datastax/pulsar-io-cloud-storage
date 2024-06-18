@@ -282,7 +282,6 @@ public abstract class PulsarTestBase {
             while (receiveCount < count) {
                 final CompletableFuture<Message<T>> receiveAsync = consumer.receiveAsync();
                 final Message<T> message = receiveAsync.get(timeout, TimeUnit.MILLISECONDS);
-                System.out.println("received message " + message);
                 handler.accept(message);
                 consumer.acknowledge(message);
                 receiveCount += 1;
