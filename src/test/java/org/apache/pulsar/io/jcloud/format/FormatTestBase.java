@@ -19,9 +19,15 @@
 package org.apache.pulsar.io.jcloud.format;
 
 import static org.junit.Assert.fail;
+import static org.mockito.Mockito.when;
+
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.List;
@@ -29,8 +35,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.io.BinaryEncoder;
+import org.apache.avro.io.EncoderFactory;
+import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.avro.util.Utf8;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -40,11 +50,14 @@ import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.Field;
 import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.SchemaDefinition;
+import org.apache.pulsar.client.api.schema.SchemaDefinitionBuilder;
+import org.apache.pulsar.client.impl.schema.generic.GenericAvroRecord;
 import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
 import org.apache.pulsar.client.impl.schema.generic.GenericJsonRecord;
 import org.apache.pulsar.common.naming.TopicName;
 import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.KeyValueEncodingType;
+import org.apache.pulsar.common.schema.SchemaInfo;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.io.jcloud.BlobStoreAbstractConfig;
 import org.apache.pulsar.io.jcloud.PulsarTestBase;
@@ -187,32 +200,31 @@ public abstract class FormatTestBase extends PulsarTestBase {
                 .endRecord();
 
         SchemaDefinition<Object> keySchemaDef = SchemaDefinition.builder()
-                .withJsonDef(String.format(""
-                        + "{\n"
-                        + "                            \t\"type\": \"record\",\n"
-                        + "                            \t\"name\": \"record\",\n"
-                        + "                            \t\"fields\": [{\n"
-                        + "                            \t\t\"name\": \"id\",\n"
-                        + "                            \t\t\"type\": [\"string\"]\n"
-                        + "                            \t}]\n"
-                        + "                            }"))
+                .withJsonDef(String.format("" +
+                        "{\n" +
+                        "                            \t\"type\": \"record\",\n" +
+                        "                            \t\"name\": \"record\",\n" +
+                        "                            \t\"fields\": [{\n" +
+                        "                            \t\t\"name\": \"id\",\n" +
+                        "                            \t\t\"type\": [\"string\"]\n" +
+                        "                            \t}]\n" +
+                        "                            }"))
                 .build();
 
         SchemaDefinition<Object> valueSchemaDef = SchemaDefinition.builder()
-                .withJsonDef(String.format(""
-                        + "{\n"
-                        + "                            \t\"type\": \"record\",\n"
-                        + "                            \t\"name\": \"record\",\n"
-                        + "                            \t\"fields\": [{\n"
-                        + "                            \t\t\"name\": \"content\",\n"
-                        + "                            \t\t\"type\": [\"string\"]\n"
-                        + "                            \t}]\n"
-                        + "                            }"))
+                .withJsonDef(String.format("" +
+                        "{\n" +
+                        "                            \t\"type\": \"record\",\n" +
+                        "                            \t\"name\": \"record\",\n" +
+                        "                            \t\"fields\": [{\n" +
+                        "                            \t\t\"name\": \"content\",\n" +
+                        "                            \t\t\"type\": [\"string\"]\n" +
+                        "                            \t}]\n" +
+                        "                            }"))
                 .build();
 
 
-        Schema<KeyValue<Object, Object>> schema = Schema.KeyValue(Schema.AVRO(keySchemaDef),
-                Schema.AVRO(valueSchemaDef), KeyValueEncodingType.SEPARATED);
+        Schema<KeyValue<Object, Object>> schema = Schema.KeyValue(Schema.AVRO(keySchemaDef), Schema.AVRO(valueSchemaDef), KeyValueEncodingType.SEPARATED);
 
         GenericData.Record keyRecord = new GenericData.Record(keySchema);
         keyRecord.put("id", "theid");
