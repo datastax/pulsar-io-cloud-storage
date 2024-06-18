@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import org.apache.avro.SchemaBuilder;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -37,10 +39,12 @@ import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Schema;
 import org.apache.pulsar.client.api.schema.Field;
 import org.apache.pulsar.client.api.schema.GenericRecord;
+import org.apache.pulsar.client.api.schema.SchemaDefinition;
 import org.apache.pulsar.client.impl.schema.AutoConsumeSchema;
 import org.apache.pulsar.client.impl.schema.generic.GenericJsonRecord;
 import org.apache.pulsar.common.naming.TopicName;
 import org.apache.pulsar.common.schema.KeyValue;
+import org.apache.pulsar.common.schema.KeyValueEncodingType;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.io.jcloud.BlobStoreAbstractConfig;
 import org.apache.pulsar.io.jcloud.PulsarTestBase;
@@ -72,6 +76,8 @@ public abstract class FormatTestBase extends PulsarTestBase {
             TopicName.get("test-json-bytes-parquet-json" + RandomStringUtils.randomAlphabetic(5));
     protected static TopicName jsonStringTopicName =
             TopicName.get("test-json-string-parquet-json" + RandomStringUtils.randomAlphabetic(5));
+    private static final TopicName kvSeparatedTopicName =
+            TopicName.get("test-parquet-kv-sep" + RandomStringUtils.randomAlphabetic(5));
 
     @BeforeClass
     public static void setUp() throws Exception {
@@ -169,6 +175,61 @@ public abstract class FormatTestBase extends PulsarTestBase {
         consumerMessages(protobufNativeTopicName.toString(), Schema.AUTO_CONSUME(), handle, testRecords.size(), 2000);
     }
 
+    @Test
+    public void testKeyValueAvroWithSameNamespaceName() throws Exception {
+        org.apache.avro.Schema keySchema = SchemaBuilder.record("record")
+                .fields()
+                .name("id").type().stringType().noDefault()
+                .endRecord();
+        org.apache.avro.Schema valueSchema = SchemaBuilder.record("record")
+                .fields()
+                .name("content").type().stringType().noDefault()
+                .endRecord();
+
+        SchemaDefinition<Object> keySchemaDef = SchemaDefinition.builder()
+                .withJsonDef(String.format(""
+                        + "{\n"
+                        + "                            \t\"type\": \"record\",\n"
+                        + "                            \t\"name\": \"record\",\n"
+                        + "                            \t\"fields\": [{\n"
+                        + "                            \t\t\"name\": \"id\",\n"
+                        + "                            \t\t\"type\": [\"string\"]\n"
+                        + "                            \t}]\n"
+                        + "                            }"))
+                .build();
+
+        SchemaDefinition<Object> valueSchemaDef = SchemaDefinition.builder()
+                .withJsonDef(String.format(""
+                        + "{\n"
+                        + "                            \t\"type\": \"record\",\n"
+                        + "                            \t\"name\": \"record\",\n"
+                        + "                            \t\"fields\": [{\n"
+                        + "                            \t\t\"name\": \"content\",\n"
+                        + "                            \t\t\"type\": [\"string\"]\n"
+                        + "                            \t}]\n"
+                        + "                            }"))
+                .build();
+
+
+        Schema<KeyValue<Object, Object>> schema = Schema.KeyValue(Schema.AVRO(keySchemaDef),
+                Schema.AVRO(valueSchemaDef), KeyValueEncodingType.SEPARATED);
+
+        GenericData.Record keyRecord = new GenericData.Record(keySchema);
+        keyRecord.put("id", "theid");
+        GenericData.Record valueRecord = new GenericData.Record(valueSchema);
+        valueRecord.put("content", "ccc");
+        List<KeyValue> testRecords = Arrays.asList(
+                new KeyValue(keyRecord, valueRecord),
+                new KeyValue(keyRecord, null)
+        );
+
+        sendTypedMessages(kvSeparatedTopicName.toString(), testRecords, schema, Optional.empty());
+
+        Consumer<Message<GenericRecord>> handle = getMessageConsumer(kvSeparatedTopicName);
+        consumerMessages(kvSeparatedTopicName.toString(), Schema.AUTO_CONSUME(), handle, testRecords.size(), 2000);
+    }
+
+
     protected abstract boolean supportMetadata();
 
     protected Consumer<Message<GenericRecord>> getMessageConsumer(TopicName topic) {
@@ -224,11 +285,11 @@ public abstract class FormatTestBase extends PulsarTestBase {
             throws Exception;
 
     public abstract DynamicMessage getDynamicMessage(TopicName topicName,
-                                                            Message<GenericRecord> msg)
+                                                     Message<GenericRecord> msg)
             throws Exception;
 
     public abstract Map<String, Object> getJSONMessage(TopicName topicName,
-                                                     Message<GenericRecord> msg)
+                                                       Message<GenericRecord> msg)
             throws Exception;
 
     protected void assertEquals(DynamicMessage msgValue, org.apache.avro.generic.GenericRecord record) {
@@ -237,16 +298,16 @@ public abstract class FormatTestBase extends PulsarTestBase {
             Object sourceValue = msgValue.getField(descriptor.findFieldByName(field.name()));
             Object newValue = record.get(field.name());
             Assert.assertEquals(
-                MessageFormat.format(
-                        "field[{0} sourceValue [{1}:{2}] not equal newValue [{3}:{4}]",
-                        field.name(),
-                        sourceValue,
-                        sourceValue != null ? sourceValue.getClass().getName() : "null",
-                        newValue,
-                        newValue != null ? newValue.getClass().getName() : "null"
-                ),
-                sourceValue,
-                newValue);
+                    MessageFormat.format(
+                            "field[{0} sourceValue [{1}:{2}] not equal newValue [{3}:{4}]",
+                            field.name(),
+                            sourceValue,
+                            sourceValue != null ? sourceValue.getClass().getName() : "null",
+                            newValue,
+                            newValue != null ? newValue.getClass().getName() : "null"
+                    ),
+                    sourceValue,
+                    newValue);
         }
     }
 
@@ -382,16 +443,16 @@ public abstract class FormatTestBase extends PulsarTestBase {
                 Object newValue = record.get(fieldName);
                 if (!fieldDescriptor.isRepeated()) {
                     Assert.assertEquals(
-                        MessageFormat.format(
-                                "field[{0} sourceValue [{1}:{2}] not equal newValue [{3}:{4}]",
-                                fieldName,
-                                sourceValue,
-                                sourceValue != null ? sourceValue.getClass().getName() : "null",
-                                newValue,
-                                newValue != null ? newValue.getClass().getName() : "null"
-                        ),
-                        sourceValue,
-                        newValue);
+                            MessageFormat.format(
+                                    "field[{0} sourceValue [{1}:{2}] not equal newValue [{3}:{4}]",
+                                    fieldName,
+                                    sourceValue,
+                                    sourceValue != null ? sourceValue.getClass().getName() : "null",
+                                    newValue,
+                                    newValue != null ? newValue.getClass().getName() : "null"
+                            ),
+                            sourceValue,
+                            newValue);
                 }
             }
         }

@@ -119,6 +119,7 @@ public class BlobStoreAbstractConfig implements Serializable {
     private String bytesFormatTypeSeparator = "0x10";
     private boolean skipFailedMessages = false;
     private boolean jsonAllowNaN = false;
+    private String topicsToPathMapping;
 
     public void validate() {
         checkNotNull(provider, "provider not set.");
@@ -194,6 +195,10 @@ public class BlobStoreAbstractConfig implements Serializable {
         if (parquetCodec != null && (parquetCodec.isEmpty() || parquetCodec.equals("none"))) {
             parquetCodec = null;
         }
+
+        if (StringUtils.isNotEmpty(topicsToPathMapping)) {
+            validateTopicsToPathMapping();
+        }
     }
 
     private static boolean hasURIScheme(String endpoint) {
@@ -202,6 +207,22 @@ public class BlobStoreAbstractConfig implements Serializable {
             return isNotBlank(uri.getScheme());
         } catch (URISyntaxException e) {
             return false;
+        }
+    }
+
+    public void validateTopicsToPathMapping() {
+        for (String topicToPathMapping : topicsToPathMapping.split(",")) {
+            String[] topicPathPair = topicToPathMapping.split("=");
+            checkArgument(topicPathPair.length == 2,
+                    "Invalid topicsToPathMapping format: " + topicToPathMapping);
+            String topic = topicPathPair[0].trim();
+            String path = topicPathPair[1].trim();
+            checkArgument(isNotBlank(topic), "Topic in topicsToPathMapping cannot be empty.");
+            checkArgument(isNotBlank(path), "Path in topicsToPathMapping cannot be empty.");
+            checkArgument(topic.matches("^[^/]+/[^/]+/[^/]+$"),
+                    "Topic must be in the format 'tenant/ns/topic': " + topic);
+            checkArgument(!path.startsWith("/") && !path.endsWith("/"),
+                    "Path in topicsToPathMapping cannot starts or ends with '/': " + path);
         }
     }
 
