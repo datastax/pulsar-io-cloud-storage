@@ -19,7 +19,6 @@
 package org.apache.pulsar.io.jcloud.format;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import org.apache.pulsar.client.api.Message;
 import org.apache.pulsar.client.api.Schema;
@@ -36,7 +35,6 @@ import org.apache.pulsar.jcloud.shade.com.google.common.io.ByteStreams;
  */
 public class BytesFormat implements Format<GenericRecord>, InitConfiguration<BlobStoreAbstractConfig> {
 
-    public static final byte[] NULL_BYTES = "".getBytes(StandardCharsets.UTF_8);
     private byte[] lineSeparatorBytes;
 
     @Override
@@ -64,10 +62,7 @@ public class BytesFormat implements Format<GenericRecord>, InitConfiguration<Blo
         while (record.hasNext()) {
             final Record<GenericRecord> next = record.next();
             final Message<GenericRecord> message = next.getMessage().get();
-            byte[] data = message.getData();
-            if (data == null) {
-                data = NULL_BYTES;
-            }
+            final byte[] data = message.getData();
             dataOutput.write(data);
             dataOutput.write(lineSeparatorBytes);
         }

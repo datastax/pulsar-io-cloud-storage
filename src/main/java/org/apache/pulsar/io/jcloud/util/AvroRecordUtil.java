@@ -18,6 +18,8 @@
  */
 package org.apache.pulsar.io.jcloud.util;
 
+import static org.apache.avro.Schema.Type.ARRAY;
+import static org.apache.avro.Schema.Type.ENUM;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
 import java.lang.reflect.Method;
@@ -33,8 +35,6 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.protobuf.ProtobufData;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.pulsar.client.api.Message;
-import org.apache.pulsar.client.api.schema.Field;
-import org.apache.pulsar.client.api.schema.GenericObject;
 import org.apache.pulsar.client.api.schema.GenericRecord;
 import org.apache.pulsar.client.api.schema.KeyValueSchema;
 import org.apache.pulsar.client.impl.MessageImpl;
@@ -43,14 +43,11 @@ import org.apache.pulsar.client.impl.schema.ProtobufNativeSchemaUtils;
 import org.apache.pulsar.client.impl.schema.generic.GenericAvroSchema;
 import org.apache.pulsar.client.impl.schema.generic.GenericJsonSchema;
 import org.apache.pulsar.client.impl.schema.generic.GenericProtobufNativeSchema;
-import org.apache.pulsar.common.schema.KeyValue;
 import org.apache.pulsar.common.schema.SchemaInfo;
 import org.apache.pulsar.common.schema.SchemaType;
 import org.apache.pulsar.functions.api.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.avro.Schema.Type.*;
 
 
 /**
@@ -171,10 +168,8 @@ public class AvroRecordUtil {
 
             final Schema avroSchema = Schema.createRecord("KVSchema", null, null, false,
                     Arrays.asList(
-                            // namespace+name must be different in the KVSchema
-                            new Schema.Field("key", parseAvroSchema(keySchemaDef, "_key")),
-                            new Schema.Field("value", Schema.createUnion(
-                                    Schema.create(Schema.Type.NULL), parseAvroSchema(valueSchemaDef, "_value")))
+                            new Schema.Field("key", parseAvroSchema(keySchemaDef)),
+                            new Schema.Field("value", parseAvroSchema(valueSchemaDef))
                     ));
             return avroSchema;
         } else {
@@ -186,23 +181,14 @@ public class AvroRecordUtil {
             if (StringUtils.isEmpty(rootAvroSchemaString)) {
                 throw new IllegalArgumentException("schema definition is empty");
             }
-            return parseAvroSchema(rootAvroSchemaString, null);
+            return parseAvroSchema(rootAvroSchemaString);
         }
     }
 
-    private static Schema parseAvroSchema(String jsonSchema, String namespaceSuffix) {
+    private static Schema parseAvroSchema(String jsonSchema) {
         final Schema.Parser parser = new Schema.Parser();
         parser.setValidateDefaults(false);
-        Schema schema = parser.parse(jsonSchema);
-        List<Schema.Field> fields = schema.getFields()
-                .stream()
-                .map(f -> new Schema.Field(f, f.schema()))
-                .collect(Collectors.toList());
-        if (namespaceSuffix == null) {
-            namespaceSuffix = "";
-        }
-        final String namespace = schema.getNamespace() == null ? namespaceSuffix : schema.getNamespace() + namespaceSuffix;
-        return Schema.createRecord(schema.getName(), null, namespace, false, fields);
+        return parser.parse(jsonSchema);
     }
 
     public static org.apache.avro.generic.GenericRecord convertGenericRecord(DynamicMessage recordValue,
@@ -229,30 +215,6 @@ public class AvroRecordUtil {
 
     public static org.apache.avro.generic.GenericRecord convertGenericRecord(GenericRecord recordValue,
                                                                              Schema rootAvroSchema) {
-        if (recordValue.getSchemaType() == SchemaType.KEY_VALUE) {
-            KeyValue<GenericRecord, GenericRecord> keyValue =
-                    (KeyValue<GenericRecord, GenericRecord>) recordValue.getNativeObject();
-            org.apache.avro.generic.GenericRecord recordHolder = new GenericData.Record(rootAvroSchema);
-            GenericRecord keyObject = keyValue.getKey();
-            if (keyObject != null) {
-                Schema keySchema = rootAvroSchema.getField("key").schema();
-                recordHolder.put("key", convertGenericRecord(keyObject, keySchema));
-            }
-            GenericRecord valueObject = keyValue.getValue();
-            if (valueObject != null) {
-                Schema valueSchema = rootAvroSchema.getField("value").schema();
-                recordHolder.put("value", convertGenericRecord(valueObject, valueSchema));
-            }
-            return recordHolder;
-        }
-
-        // handle nullable fields that are union[null,record]
-        if (rootAvroSchema.isUnion()) {
-            rootAvroSchema = rootAvroSchema.getTypes().stream()
-                    .filter(schema -> schema.getType().equals(Schema.Type.RECORD))
-                    .findFirst()
-                    .get();
-        }
         org.apache.avro.generic.GenericRecord recordHolder = new GenericData.Record(rootAvroSchema);
         for (org.apache.pulsar.client.api.schema.Field field : recordValue.getFields()) {
             Schema.Field field1 = rootAvroSchema.getField(field.getName());
