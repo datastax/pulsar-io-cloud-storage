@@ -18,8 +18,7 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
@@ -30,7 +29,7 @@
 
   <groupId>io.streamnative.ecosystem</groupId>
   <artifactId>pulsar-io-cloud-storage</artifactId>
-  <version>2.9.0-rc-202110221101</version>
+  <version>4.0.0-SNAPSHOT</version>
   <name>Pulsar Ecosystem :: IO Connector :: Cloud Storage Project</name>
   <description>Cloud Storage Connector integrates Apache Pulsar with Cloud Storage.</description>
 
@@ -48,7 +47,8 @@
     <jackson.version>2.13.2</jackson.version>
     <jackson-databind.version>2.13.4.2</jackson-databind.version>
     <lombok.version>1.18.32</lombok.version>
-    <pulsar.version>4.0.0.8</pulsar.version>
+    <pulsar.groupId>com.datastax.oss</pulsar.groupId>
+    <pulsar.version>4.0.3.2</pulsar.version>
     <avro.version>1.11.4</avro.version>
     <hadoop.version>3.3.6</hadoop.version>
     <parquet.version>1.13.1</parquet.version>
@@ -97,26 +97,33 @@
     </license>
   </licenses>
 
+  <scm>
+    <connection>scm:git:git@github.com:datastax/pulsar-io-cloud-storage.git</connection>
+    <developerConnection>scm:git:git@github.com:datastax/pulsar-io-cloud-storage.git</developerConnection>
+    <url>https://github.com/datastax/pulsar-io-cloud-storage</url>
+    <tag>HEAD</tag>
+  </scm>
+
   <!-- keep all the dependencies used by all modules here -->
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>io.streamnative</groupId>
+        <groupId>${pulsar.groupId}</groupId>
         <artifactId>pulsar-io-core</artifactId>
         <version>${pulsar.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.streamnative</groupId>
+        <groupId>${pulsar.groupId}</groupId>
         <artifactId>pulsar-io-common</artifactId>
         <version>${pulsar.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.streamnative</groupId>
+        <groupId>${pulsar.groupId}</groupId>
         <artifactId>pulsar-common</artifactId>
         <version>${pulsar.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.streamnative</groupId>
+        <groupId>${pulsar.groupId}</groupId>
         <artifactId>pulsar-client-original</artifactId>
         <version>${pulsar.version}</version>
       </dependency>
@@ -141,7 +148,7 @@
         <version>${spotbugs-annotations.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.streamnative</groupId>
+        <groupId>${pulsar.groupId}</groupId>
         <artifactId>jclouds-shaded</artifactId>
         <version>${pulsar.version}</version>
       </dependency>
@@ -321,19 +328,19 @@
 
     <!-- runtime dependencies -->
     <dependency>
-      <groupId>io.streamnative</groupId>
+      <groupId>${pulsar.groupId}</groupId>
       <artifactId>pulsar-io-core</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.streamnative</groupId>
+      <groupId>${pulsar.groupId}</groupId>
       <artifactId>pulsar-io-common</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.streamnative</groupId>
+      <groupId>${pulsar.groupId}</groupId>
       <artifactId>pulsar-common</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.streamnative</groupId>
+      <groupId>${pulsar.groupId}</groupId>
       <artifactId>pulsar-client-original</artifactId>
     </dependency>
 
@@ -346,7 +353,7 @@
       <artifactId>jackson-dataformat-yaml</artifactId>
     </dependency>
     <dependency>
-      <groupId>io.streamnative</groupId>
+      <groupId>${pulsar.groupId}</groupId>
       <artifactId>jclouds-shaded</artifactId>
       <exclusions>
         <exclusion>
@@ -414,6 +421,33 @@
     <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.hadoop</groupId>
+      <artifactId>hadoop-client</artifactId>
+      <version>3.3.3</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-yarn-api</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-yarn-client</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-yarn-common</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-hdfs-client</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
@@ -600,12 +634,40 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>io.streamnative</groupId>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.11</version>
+    </dependency>
+    <dependency>
+      <groupId>${pulsar.groupId}</groupId>
+      <artifactId>pulsar-io-common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>javax.xml.bind</groupId>
+      <artifactId>jaxb-api</artifactId>
+      <version>${jaxb-api}</version>
+    </dependency>
+    <dependency>
+      <groupId>${pulsar.groupId}</groupId>
+      <artifactId>pulsar-client-original</artifactId>
+      <version>${pulsar.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${pulsar.groupId}</groupId>
       <artifactId>pulsar-client-admin-original</artifactId>
       <version>${pulsar.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>net.java.dev.jna</groupId>
+      <artifactId>jna</artifactId>
+      <version>5.7.0</version>
       <scope>test</scope>
     </dependency>
-
+    <dependency>
+      <groupId>${pulsar.groupId}</groupId>
+      <artifactId>pulsar-common</artifactId>
+      <version>${pulsar.version}</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -617,6 +679,8 @@
           <version>${maven-compiler-plugin.version}</version>
           <configuration>
             <encoding>UTF-8</encoding>
+            <source>${java.version}</source>
+            <target>${java.version}</target>
             <compilerArgs>
               <!--              <compilerArg>-Werror</compilerArg>-->
               <compilerArg>-Xlint:deprecation</compilerArg>
@@ -630,7 +694,9 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
+          <version>${maven-surefire-plugin.version}</version>
           <configuration>
+<!--            <redirectTestOutputToFile>${redirectTestOutputToFile}</redirectTestOutputToFile>-->
             <reuseForks>false</reuseForks>
             <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
             <rerunFailingTestsCount>${testRetryCount}</rerunFailingTestsCount>
@@ -826,11 +892,38 @@
       <id>central</id>
       <layout>default</layout>
       <url>https://repo1.maven.org/maven2</url>
+<!--      <snapshots>-->
+<!--        <enabled>false</enabled>-->
+<!--      </snapshots>-->
+<!--    </repository>-->
+<!--    <repository>-->
+<!--      <id>confluent</id>-->
+<!--      <url>https://packages.confluent.io/maven/</url>-->
+<!--      <snapshots>-->
+<!--        <enabled>false</enabled>-->
+<!--      </snapshots>-->
     </repository>
-    <repository>
-      <id>bintray-streamnative-maven</id>
-      <name>bintray</name>
-      <url>https://dl.bintray.com/streamnative/maven</url>
-    </repository>
+<!--    <repository>-->
+<!--      <id>datastax-releases</id>-->
+<!--      <url>https://repo.datastax.com/artifactory/datastax-public-releases-local</url>-->
+<!--      <snapshots>-->
+<!--        <enabled>false</enabled>-->
+<!--      </snapshots>-->
+<!--      <releases>-->
+<!--        <enabled>true</enabled>-->
+<!--      </releases>-->
+<!--    </repository>-->
   </repositories>
+<!--  <distributionManagement>-->
+<!--    <repository>-->
+<!--      <id>datastax-releases</id>-->
+<!--      <name>DataStax Local Releases</name>-->
+<!--      <url>https://repo.aws.dsinternal.org/artifactory/datastax-releases-local/</url>-->
+<!--    </repository>-->
+<!--    <snapshotRepository>-->
+<!--      <id>datastax-snapshots-local</id>-->
+<!--      <name>DataStax Local Snapshots</name>-->
+<!--      <url>https://repo.aws.dsinternal.org/artifactory/datastax-snapshots-local/</url>-->
+<!--    </snapshotRepository>-->
+<!--  </distributionManagement>-->
 </project>
