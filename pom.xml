@@ -44,8 +44,8 @@
     <testRetryCount>2</testRetryCount>
 
     <!-- connector dependencies -->
-    <jackson.version>2.15.4</jackson.version>
-    <jackson-databind.version>2.15.4</jackson-databind.version>
+    <jackson.version>2.18.6</jackson.version>
+    <jackson-databind.version>2.18.6</jackson-databind.version>
     <lombok.version>1.18.32</lombok.version>
     <pulsar.groupId>com.datastax.oss</pulsar.groupId>
     <pulsar.version>3.1.4.22</pulsar.version>
